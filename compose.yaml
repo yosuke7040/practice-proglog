@@ -1,0 +1,13 @@
+services:
+  server:
+    container_name: server
+    build:
+      context: .
+      # dockerfile: Dockerfile
+      target: runner
+    # env_file:
+    #   # Ensure that the variables in .env match the same variables in devcontainer.json
+    #   - .env
+    ports:
+      - 8080:8080
+    # command: sleep infinity

@@ -1,0 +1,18 @@
+# !: https://code.visualstudio.com/docs/devcontainers/create-dev-container
+services:
+  server:
+    build:
+      target: develop
+    ports:
+      - 8080:8080
+      # NOTE:
+      # cached: ホストを信頼し、コンテナ側への反映が遅延することを許容
+      # delegated: コンテナ側を信頼し、ホスト側への反映が遅延することを許容
+    volumes:
+      - type: bind
+        # リポジトリのルートディレクトリをマウントしないとgithubの差分がVSCodeで表示されない
+        # ?: でもそうすると全部ルート直下で良いのでは...
+        source: ./
+        target: /workspace
+        consistency: delegated
+    command: sleep infinity

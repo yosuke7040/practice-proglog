@@ -1,0 +1,19 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+      {
+          "name": "Debug with Delve",
+          "type": "go",
+          "request": "launch",
+          "mode": "remote",
+          "remotePath": "/workspace",
+          "program": "/workspace/main",
+          "port": 2345,
+          "host": "127.0.0.1",
+          "apiVersion": 2,
+          "showLog": true,
+          "trace": "verbose",
+          "dlvToolPath": "/go/bin/dlv"
+      }
+  ]
+}
