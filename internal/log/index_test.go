@@ -46,6 +46,7 @@ func TestIndex(t *testing.T) {
 
 	// インデックスは、既存のファイルからその状態を構築する
 	f, err = os.OpenFile(f.Name(), os.O_RDWR, 0600)
+	require.NoError(t, err)
 	idx, err = newIndex(f, c)
 	require.NoError(t, err)
 

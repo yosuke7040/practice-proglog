@@ -1,7 +1,6 @@
 package log
 
 import (
-	"fmt"
 	"io"
 	"os"
 	"path"
@@ -22,14 +21,12 @@ type Log struct {
 }
 
 func NewLog(dir string, c Config) (*Log, error) {
+	if c.Segment.MaxStoreBytes == 0 {
+		c.Segment.MaxStoreBytes = 1024
+	}
 	if c.Segment.MaxIndexBytes == 0 {
 		c.Segment.MaxIndexBytes = 1024
 	}
-
-	if c.Segment.MaxIndexBytes == 0 {
-		c.Segment.MaxStoreBytes = 1024
-	}
-
 	l := &Log{
 		Dir:    dir,
 		Config: c,
@@ -43,29 +40,25 @@ func (l *Log) setup() error {
 	if err != nil {
 		return err
 	}
-
-	var baseOffset []uint64
+	var baseOffsets []uint64
 	for _, file := range files {
 		offStr := strings.TrimSuffix(
 			file.Name(),
 			path.Ext(file.Name()),
 		)
 		off, _ := strconv.ParseUint(offStr, 10, 0)
-		baseOffset = append(baseOffset, off)
+		baseOffsets = append(baseOffsets, off)
 	}
-
-	sort.Slice(baseOffset, func(i, j int) bool {
-		return baseOffset[i] < baseOffset[j]
+	sort.Slice(baseOffsets, func(i, j int) bool {
+		return baseOffsets[i] < baseOffsets[j]
 	})
-
-	for i := 0; i < len(baseOffset); i++ {
-		if err = l.newSegment(baseOffset[i]); err != nil {
+	for i := 0; i < len(baseOffsets); i++ {
+		if err = l.newSegment(baseOffsets[i]); err != nil {
 			return err
 		}
 		// baseOffsetsはインデックスとストアの2つの重複を含んでいるので、重複しているのはスキップ
 		i++
 	}
-
 	if l.segments == nil {
 		if err = l.newSegment(
 			l.Config.Segment.InitialOffset,
@@ -73,7 +66,6 @@ func (l *Log) setup() error {
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -98,13 +90,12 @@ func (l *Log) Append(record *api.Record) (uint64, error) {
 		return 0, err
 	}
 
-	return off, nil
+	return off, err
 }
 
 func (l *Log) Read(off uint64) (*api.Record, error) {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
-
 	var s *segment
 	for _, segment := range l.segments {
 		if segment.baseOffset <= off && off < segment.nextOffset {
@@ -112,8 +103,9 @@ func (l *Log) Read(off uint64) (*api.Record, error) {
 			break
 		}
 	}
-	if s == nil || s.nextOffset <= off {
-		return nil, fmt.Errorf("offset out of range: %d", off)
+
+	if s == nil {
+		return nil, api.ErrOffsetOutOfRange{Offset: off}
 	}
 
 	return s.Read(off)
@@ -165,7 +157,6 @@ func (l *Log) highestOffset() (uint64, error) {
 	if off == 0 {
 		return 0, nil
 	}
-
 	return off - 1, nil
 }
 
@@ -176,7 +167,6 @@ func (l *Log) highestOffset() (uint64, error) {
 func (l *Log) Truncate(lowest uint64) error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-
 	var segments []*segment
 	for _, s := range l.segments {
 		if s.nextOffset <= lowest+1 {
@@ -187,7 +177,6 @@ func (l *Log) Truncate(lowest uint64) error {
 		}
 		segments = append(segments, s)
 	}
-
 	l.segments = segments
 	return nil
 }
@@ -195,12 +184,10 @@ func (l *Log) Truncate(lowest uint64) error {
 func (l *Log) Reader() io.Reader {
 	l.mu.RLock()
 	defer l.mu.RUnlock()
-
 	readers := make([]io.Reader, len(l.segments))
 	for i, segment := range l.segments {
 		readers[i] = &originReader{segment.store, 0}
 	}
-
 	return io.MultiReader(readers...)
 }
 
@@ -220,7 +207,6 @@ func (l *Log) newSegment(off uint64) error {
 	if err != nil {
 		return err
 	}
-
 	l.segments = append(l.segments, s)
 	l.activeSegment = s
 	return nil

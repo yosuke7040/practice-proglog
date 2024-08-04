@@ -48,6 +48,8 @@ RUN go install github.com/air-verse/air@v1.52.2 \
   && go install github.com/go-task/task/v3/cmd/task@latest \
   && go install github.com/go-delve/delve/cmd/dlv@latest
 
+RUN go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+
 RUN sudo apt update \
   && sudo apt install -y protobuf-compiler
 
